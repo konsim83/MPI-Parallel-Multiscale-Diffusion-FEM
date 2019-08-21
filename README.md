@@ -29,9 +29,16 @@ make
 If you want to produce a faster reslease version type
 
 ```
-make debug
+make release
 make
 ```
+Then test the executable with
+
+```
+mpirun -np N ./main
+```
+where N is the number of MPI processes. You should also be able to run this on clusters using SLURM.
+
 
 ## Building the Documentation
 
