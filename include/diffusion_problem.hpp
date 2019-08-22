@@ -25,19 +25,6 @@
 
 #include <deal.II/lac/generic_linear_algebra.h>
 
-namespace LA
-{
-#if defined(DEAL_II_WITH_PETSC) && !defined(DEAL_II_PETSC_WITH_COMPLEX) && \
-  !(defined(DEAL_II_WITH_TRILINOS) && defined(FORCE_USE_OF_TRILINOS))
-  using namespace dealii::LinearAlgebraPETSc;
-#  define USE_PETSC_LA
-#elif defined(DEAL_II_WITH_TRILINOS)
-  using namespace dealii::LinearAlgebraTrilinos;
-#else
-#  error DEAL_II_WITH_PETSC or DEAL_II_WITH_TRILINOS required
-#endif
-} // namespace LA
-
 #include <deal.II/lac/vector.h>
 #include <deal.II/lac/full_matrix.h>
 #include <deal.II/lac/solver_cg.h>
@@ -74,6 +61,7 @@ namespace LA
 #include <iostream>
 
 // My Headers
+#include "config.h"
 #include "matrix_coeff.hpp"
 #include "right_hand_side.hpp"
 #include "neumann_bc.hpp"
@@ -146,7 +134,7 @@ fe(1),
 dof_handler(triangulation),
 pcout(std::cout,
 	  (Utilities::MPI::this_mpi_process(mpi_communicator) == 0)),
-	  computing_timer(mpi_communicator,
+computing_timer(mpi_communicator,
 				pcout,
 				TimerOutput::summary,
 				TimerOutput::wall_times),
@@ -168,10 +156,6 @@ void DiffusionProblem<dim>::make_grid ()
 	GridGenerator::hyper_cube (triangulation, 0, 1, /* colorize */ true);
 
 	triangulation.refine_global (n_refine);
-
-	std::cout << "Number of active cells: "
-			<< triangulation.n_active_cells()
-			<< std::endl;
 }
 
 
@@ -235,7 +219,7 @@ void DiffusionProblem<dim>::setup_system ()
 /*!
  * @brief Assemble the system matrix and the static right hand side.
  *
- * Assembly routine to build the time-independent (static)part.
+ * Assembly routine to build the time-independent (static) part.
  * Neumann boundary conditions will be put on edges/faces
  * with odd number. Constraints are not applied here yet.
  */
@@ -259,7 +243,7 @@ void DiffusionProblem<dim>::assemble_system ()
 
 	const unsigned int   	dofs_per_cell = fe.dofs_per_cell;
 	const unsigned int   	n_q_points    = quadrature_formula.size();
-	const unsigned int 	n_face_q_points = face_quadrature_formula.size();
+	const unsigned int 		n_face_q_points = face_quadrature_formula.size();
 
 	FullMatrix<double>   cell_matrix (dofs_per_cell, dofs_per_cell);
 	Vector<double>       cell_rhs (dofs_per_cell);
@@ -519,12 +503,11 @@ void DiffusionProblem<dim>::run ()
 		TimerOutput::Scope t(computing_timer, "output vtu");
 		output_results ();
 	}
+	pcout << std::endl
+			<< "===========================================" << std::endl;
 
 	computing_timer.print_summary();
 	computing_timer.reset();
-
-	pcout << std::endl
-			<< "===========================================" << std::endl;
 }
 
 } // end namespace DiffusionProblem

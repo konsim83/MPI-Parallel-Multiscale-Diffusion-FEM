@@ -30,8 +30,8 @@ int main (int argc, char *argv[])
 
 		if (compute_2d)
 		{
-			DiffusionProblem::DiffusionProblem<2> diffusion_problem_2d_coarse (n_refine);
-			diffusion_problem_2d_coarse.run ();
+//			DiffusionProblem::DiffusionProblem<2> diffusion_problem_2d_coarse (n_refine);
+//			diffusion_problem_2d_coarse.run ();
 
 			DiffusionProblem::DiffusionProblem<2> diffusion_problem_2d_fine (n_refine + n_refine_local);
 			diffusion_problem_2d_fine.run ();
@@ -42,8 +42,8 @@ int main (int argc, char *argv[])
 
 		if (compute_3d)
 		{
-			DiffusionProblem::DiffusionProblem<3> diffusion_problem_3d_coarse (n_refine);
-			diffusion_problem_3d_coarse.run ();
+//			DiffusionProblem::DiffusionProblem<3> diffusion_problem_3d_coarse (n_refine);
+//			diffusion_problem_3d_coarse.run ();
 
 			DiffusionProblem::DiffusionProblem<3> diffusion_problem_3d_fine (n_refine + n_refine_local);
 			diffusion_problem_3d_fine.run ();

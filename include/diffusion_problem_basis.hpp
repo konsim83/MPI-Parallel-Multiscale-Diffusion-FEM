@@ -42,10 +42,10 @@
 #include <iostream>
 
 // My Headers
+#include "config.h"
 #include "matrix_coeff.hpp"
 #include "right_hand_side.hpp"
 #include "neumann_bc.hpp"
-#include "dirichlet_bc.hpp"
 #include "basis_q1.hpp"
 
 /*!

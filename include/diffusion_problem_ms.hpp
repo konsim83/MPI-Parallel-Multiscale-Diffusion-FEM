@@ -46,6 +46,7 @@
 #include <vector>
 
 // My Headers
+#include "config.h"
 #include "matrix_coeff.hpp"
 #include "right_hand_side.hpp"
 #include "neumann_bc.hpp"
