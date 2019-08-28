@@ -40,6 +40,8 @@
 #include <deal.II/grid/tria_accessor.h>
 #include <deal.II/grid/tria_iterator.h>
 
+#include <deal.II/grid/cell_id.h>
+
 #include <deal.II/dofs/dof_handler.h>
 #include <deal.II/dofs/dof_accessor.h>
 #include <deal.II/dofs/dof_tools.h>
@@ -76,6 +78,46 @@
 namespace DiffusionProblem
 {
 using namespace dealii;
+
+
+template <int dim>
+class MyClass
+{
+private:
+	int n_proc;
+	int n_index;
+	CellId cell_id;
+
+public:
+	// Constructor
+	MyClass(): n_proc(-1), n_index(-1), cell_id() {
+
+	};
+
+	// Setter
+	void set_n_proc(int number){
+		n_proc = number;
+	}
+	void set_n_index(int number){
+		n_index = number;
+	}
+
+	// Getter
+	int get_n_proc(){
+		return n_proc;
+	}
+	int get_n_index(){
+		return n_index;
+	}
+
+	void set_cell_id(CellId cell_id_in){
+		cell_id = cell_id_in;
+	}
+	std::string print_cell_id(){
+		return cell_id.to_string();
+	}
+};
+
 
 /*!
  * @class DiffusionProblem
@@ -116,6 +158,8 @@ private:
 	TimerOutput        		computing_timer;
 
 	unsigned int n_refine;
+
+	std::vector<MyClass<dim>> my_class_list;
 };
 
 
@@ -275,6 +319,22 @@ void DiffusionProblem<dim>::assemble_system ()
 	{
 		if (cell->is_locally_owned())
 		{
+			my_class_list.push_back(MyClass<dim>());
+			my_class_list.back().set_n_proc(Utilities::MPI::this_mpi_process(mpi_communicator));
+			my_class_list.back().set_n_index(my_class_list.size()-1);
+			my_class_list.back().set_cell_id(cell->id());
+
+			std::cout << ">>>>>   MyClass has process number   "
+					<< my_class_list.back().get_n_proc()
+					<< " - "
+					<< my_class_list.back().get_n_index()
+					<< "   out of   "
+					<< Utilities::MPI::n_mpi_processes(mpi_communicator)
+					<< "   processes.   <<<<<     >>>>>   CellId:   "
+					<< my_class_list.back().print_cell_id()
+					<< "   <<<<<"
+					<< std::endl;
+
 			cell_matrix = 0;
 			cell_rhs = 0;
 
