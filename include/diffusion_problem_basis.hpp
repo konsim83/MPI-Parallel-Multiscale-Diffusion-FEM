@@ -68,7 +68,9 @@ template <int dim>
 class DiffusionProblemBasis
 {
 public:
-	DiffusionProblemBasis ();
+	DiffusionProblemBasis () = delete;
+	DiffusionProblemBasis (unsigned int n_refine_local,
+					typename Triangulation<dim>::active_cell_iterator& global_cell);
 	void run ();
 
 	void output_global_solution_in_cell () const;
@@ -77,12 +79,8 @@ public:
 	const Vector<double>& get_global_element_rhs () const;
 	const std::string& get_filename_global ();
 
-	void set_n_local_refinements (unsigned int n_refine_local);
-	void set_cell_data (typename Triangulation<dim>::active_cell_iterator &coarse_cell,
-						unsigned int n_cell);
-	void set_basis_data ();
-	void set_output_flag (bool flag);
 	void set_global_weights (const std::vector<double> &global_weights);
+	void set_output_flag (bool flag);
 
 private:
 	void make_grid ();
@@ -148,26 +146,17 @@ private:
 	/*!
 	 * Number of local refinements.
 	 */
-	unsigned int n_refine_local;
-	bool is_set_n_refine_local;
+	const unsigned int n_refine_local;
 
 	/*!
 	 * Global cell number.
 	 */
-	unsigned int global_cell_number;
-
-	/*!
-	 * Iterator to global cell..
-	 */
-	typename Triangulation<dim>::active_cell_iterator global_cell;
-	bool is_set_global_cell;
-
+	const CellId global_cell_id;
 
 	/*!
 	 * Object carries set of local \f$Q_1\f$-basis functions.
 	 */
 	Coefficients::BasisQ1<dim> basis_q1;
-	bool is_set_basis_data;
 
 	/*!
 	 * Write basis functions as vtu.
@@ -180,7 +169,8 @@ private:
  * Default constructor.
  */
 template <int dim>
-DiffusionProblemBasis<dim>::DiffusionProblemBasis ()
+DiffusionProblemBasis<dim>::DiffusionProblemBasis (unsigned int n_refine_local,
+		typename Triangulation<dim>::active_cell_iterator& global_cell)
 :
 fe (1),
 dof_handler (triangulation),
@@ -194,15 +184,19 @@ is_built_global_element_matrix (false),
 global_element_rhs (fe.dofs_per_cell),
 global_weights (fe.dofs_per_cell, 0),
 is_set_global_weights (false),
-n_refine_local (0),
-is_set_n_refine_local (false),
-global_cell_number (0),
-global_cell (),
-is_set_global_cell (false),
-basis_q1 (),
-is_set_basis_data (false),
+n_refine_local (n_refine_local),
+global_cell_id (global_cell->id()),
+basis_q1 (global_cell),
 output_flag (false)
-{}
+{
+	// set corner points
+	for (unsigned int vertex_n=0;
+			 vertex_n<GeometryInfo<dim>::vertices_per_cell;
+			 ++vertex_n)
+	{
+		corner_points[vertex_n] = global_cell->vertex(vertex_n);
+	}
+}
 
 
 /*!
@@ -214,11 +208,6 @@ output_flag (false)
 template <int dim>
 void DiffusionProblemBasis<dim>::make_grid ()
 {
-	Assert (is_set_n_refine_local,
-				ExcMessage ("Number of local refinements must be set first."));
-	Assert (is_set_global_cell,
-				ExcMessage ("Global cell data must be set first."));
-
 	GridGenerator::general_cell(triangulation, corner_points, /* colorize faces */ false);
 
 	triangulation.refine_global (n_refine_local);
@@ -237,8 +226,8 @@ void DiffusionProblemBasis<dim>::setup_system ()
 {
 	dof_handler.distribute_dofs (fe);
 
-	std::cout << "Global cell   "
-			<< global_cell_number
+	std::cout << "Global cell id  "
+			<< global_cell_id.to_string()
 			<< ":   "
 			<< triangulation.n_active_cells() << " active fine cells --- "
 			<< dof_handler.n_dofs() << " subgrid dof"
@@ -451,7 +440,7 @@ void DiffusionProblemBasis<dim>::solve_iterative (unsigned int index_basis)
 
 	std::cout << "   "
 			<< "(cell   "
-			<< global_cell_number
+			<< global_cell_id.to_string()
 			<< ") "
 			<< "(basis   "
 			<< index_basis
@@ -493,61 +482,6 @@ const std::string&
 DiffusionProblemBasis<dim>::get_filename_global ()
 {
 	return filename_global;
-}
-
-
-/*!
- * Set the number of local refinements.
- * @param n_refine_local
- */
-template <int dim>
-void
-DiffusionProblemBasis<dim>::set_n_local_refinements (unsigned int n_refine)
-{
-	n_refine_local = n_refine;
-
-	is_set_n_refine_local = true;
-}
-
-
-/*!
- * Set the global cell data.
- * @param coarse_cell
- * @param n_cell_global
- */
-template <int dim>
-void
-DiffusionProblemBasis<dim>::set_cell_data (typename Triangulation<dim>::active_cell_iterator &coarse_cell,
-										unsigned int n_cell_global)
-{
-	global_cell = coarse_cell;
-	global_cell_number = n_cell_global;
-
-	for (unsigned int vertex_n=0;
-			 vertex_n<GeometryInfo<dim>::vertices_per_cell;
-			 ++vertex_n)
-	{
-		corner_points[vertex_n] = global_cell->vertex(vertex_n);
-	}
-
-	is_set_global_cell = true;
-}
-
-
-/*!
- * Initialize the basis coefficients for the global cell.
- * @param coarse_cell
- */
-template <int dim>
-void
-DiffusionProblemBasis<dim>::set_basis_data ()
-{
-	Assert (is_set_global_cell,
-					ExcMessage ("Pointer to global cell must be set first."));
-
-	basis_q1.set_coeff (global_cell);
-
-	is_set_basis_data = true;
 }
 
 
@@ -607,7 +541,7 @@ DiffusionProblemBasis<dim>::set_filename_global ()
 			"solution-ms_fine-2d" :
 			"solution-ms_fine-3d");
 
-	filename_global += "_cell-" + Utilities::int_to_string(global_cell_number, 4) + ".vtu";
+	filename_global += "_cell-" + global_cell_id.to_string() + ".vtu";
 }
 
 
@@ -631,7 +565,7 @@ DiffusionProblemBasis<dim>::output_basis () const
 	data_out.build_patches ();
 
 	std::string filename = "basis";
-	filename += "_cell-" + Utilities::int_to_string(global_cell_number, 4);
+	filename += "_cell-" + global_cell_id.to_string();
 	filename += ".vtu";
 
 	std::ofstream output (dim == 2 ?
@@ -670,9 +604,6 @@ DiffusionProblemBasis<dim>::output_global_solution_in_cell () const
 template <int dim>
 void DiffusionProblemBasis<dim>::run ()
 {
-	Assert (is_set_basis_data,
-						ExcMessage ("All basis data must be set first."));
-
 	make_grid ();
 
 	setup_system ();

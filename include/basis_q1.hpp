@@ -36,11 +36,10 @@ template <int dim>
 class BasisQ1 : public Function<dim>
 {
 public:
-	BasisQ1();
+	BasisQ1 () = delete;
+	BasisQ1 (const typename Triangulation<dim>::active_cell_iterator &cell);
 
 	void set_index (unsigned int index);
-
-	void set_coeff(const typename Triangulation<dim>::active_cell_iterator &cell);
 
 	virtual double value(const Point<dim> &p,
 						const unsigned int component = 0) const override;
@@ -58,28 +57,11 @@ private:
 	 * Matrix columns hold coefficients of basis functions.
 	 */
 	FullMatrix<double>	coeff_matrix;
-	bool is_set_coeff_matrix;
 };
 
 
 /*!
- * Constructor.
- * @param cell
- */
-template<int dim>
-BasisQ1<dim>::BasisQ1 ()
-:
-Function<dim>(),
-index_basis(0),
-coeff_matrix(FullMatrix<double>(std::pow(2,dim),std::pow(2,dim))),
-is_set_coeff_matrix(false)
-{
-}
-
-
-
-/*!
- * Set the coefficients. Template specialization \f$dim=2\f$.
+ * Constructor. Template specialization \f$dim=2\f$.
  * @param cell
  *
  * Build up coefficient matrix \f$A=(a_{ij})\f$ for basis polynomial
@@ -88,9 +70,11 @@ is_set_coeff_matrix(false)
  * to the \f$i\f$-th vertex.
  */
 template<>
-void
-BasisQ1<2>::set_coeff (const typename Triangulation<2>::active_cell_iterator &cell)
-
+BasisQ1<2>::BasisQ1 (const typename Triangulation<2>::active_cell_iterator &cell)
+:
+Function<2>(),
+index_basis(0),
+coeff_matrix(4,4)
 {
 	FullMatrix<double>	point_matrix(4,4);
 
@@ -106,13 +90,11 @@ BasisQ1<2>::set_coeff (const typename Triangulation<2>::active_cell_iterator &ce
 
 	// Columns of coeff_matrix are the coefficients of the polynomial
 	coeff_matrix.invert (point_matrix);
-
-	is_set_coeff_matrix = true;
 }
 
 
 /*!
- * Set the coefficients. Template specialization \f$dim=3\f$.
+ * Constructor. Template specialization \f$dim=3\f$.
  * @param cell
  *
  * Build up coefficient matrix \f$A=(a_{ij})\f$ for basis polynomial
@@ -121,8 +103,11 @@ BasisQ1<2>::set_coeff (const typename Triangulation<2>::active_cell_iterator &ce
  * to the \f$i\f$-th vertex.
  */
 template<>
-void
-BasisQ1<3>::set_coeff (const typename Triangulation<3>::active_cell_iterator &cell)
+BasisQ1<3>::BasisQ1 (const typename Triangulation<3>::active_cell_iterator &cell)
+:
+Function<3>(),
+index_basis(0),
+coeff_matrix(8,8)
 {
 	FullMatrix<double>	point_matrix(8,8);
 
@@ -142,8 +127,6 @@ BasisQ1<3>::set_coeff (const typename Triangulation<3>::active_cell_iterator &ce
 
 	// Columns of coeff_matrix are the coefficients of the polynomial
 	coeff_matrix.invert (point_matrix);
-
-	is_set_coeff_matrix = true;
 }
 
 
@@ -171,9 +154,6 @@ double
 BasisQ1<2>::value (const Point<2> &p,
 					const unsigned int /* component */) const
 {
-	Assert (is_set_coeff_matrix,
-			ExcMessage ("Coefficient matrix must be set first."));
-
 	double value = coeff_matrix(0,index_basis)
 					+ coeff_matrix(1,index_basis)*p(0)
 					+ coeff_matrix(2,index_basis)*p(1)
@@ -194,9 +174,6 @@ double
 BasisQ1<3>::value (const Point<3> &p,
 					const unsigned int /* component */) const
 {
-	Assert (is_set_coeff_matrix,
-			ExcMessage ("Coefficient matrix must be set first."));
-
 	double value = coeff_matrix(0,index_basis)
 					+ coeff_matrix(1,index_basis)*p(0)
 					+ coeff_matrix(2,index_basis)*p(1)
@@ -224,8 +201,6 @@ BasisQ1<2>::value_list(const std::vector<Point<2>> &points,
 {
 	Assert (points.size() == values.size(),
 			ExcDimensionMismatch (points.size(), values.size()) );
-	Assert (is_set_coeff_matrix,
-			ExcMessage ("Coefficient matrix must be set first."));
 
 	for ( unsigned int p=0; p<points.size(); ++p)
 	{
@@ -252,8 +227,6 @@ BasisQ1<3>::value_list(const std::vector<Point<3>> &points,
 {
 	Assert (points.size() == values.size(),
 			ExcDimensionMismatch (points.size(), values.size()) );
-	Assert (is_set_coeff_matrix,
-			ExcMessage ("Coefficient matrix must be set first."));
 
 	for ( unsigned int p=0; p<points.size(); ++p)
 	{

@@ -84,36 +84,29 @@ template <int dim>
 class MyClass
 {
 private:
-	int n_proc;
-	int n_index;
-	CellId cell_id;
+	const unsigned int n_proc;
+	const unsigned int n_index;
+	const CellId cell_id;
 
 public:
-	// Constructor
-	MyClass(): n_proc(-1), n_index(-1), cell_id() {
-
-	};
-
-	// Setter
-	void set_n_proc(int number){
-		n_proc = number;
-	}
-	void set_n_index(int number){
-		n_index = number;
-	}
+	// Constructors
+	MyClass()
+	: n_proc(-1), n_index(-1), cell_id()
+	{};
+	MyClass(unsigned int n_proc, unsigned int n_index, CellId cell_id)
+	: n_proc(n_proc), n_index(n_index), cell_id(cell_id)
+	{};
 
 	// Getter
-	int get_n_proc(){
+	int get_n_proc() const {
 		return n_proc;
 	}
-	int get_n_index(){
+	int get_n_index() const {
 		return n_index;
 	}
 
-	void set_cell_id(CellId cell_id_in){
-		cell_id = cell_id_in;
-	}
-	std::string print_cell_id(){
+	// Printer
+	std::string print_cell_id() const {
 		return cell_id.to_string();
 	}
 };
@@ -319,10 +312,9 @@ void DiffusionProblem<dim>::assemble_system ()
 	{
 		if (cell->is_locally_owned())
 		{
-			my_class_list.push_back(MyClass<dim>());
-			my_class_list.back().set_n_proc(Utilities::MPI::this_mpi_process(mpi_communicator));
-			my_class_list.back().set_n_index(my_class_list.size()-1);
-			my_class_list.back().set_cell_id(cell->id());
+			my_class_list.push_back(MyClass<dim>(Utilities::MPI::this_mpi_process(mpi_communicator),
+					my_class_list.size(),
+					cell->id()));
 
 			std::cout << ">>>>>   MyClass has process number   "
 					<< my_class_list.back().get_n_proc()

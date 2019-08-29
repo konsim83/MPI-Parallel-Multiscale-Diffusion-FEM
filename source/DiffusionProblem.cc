@@ -7,7 +7,7 @@
 
 // My Headers
 #include "diffusion_problem.hpp"
-//#include "diffusion_problem_ms.hpp"
+#include "diffusion_problem_ms.hpp"
 
 using namespace dealii;
 
@@ -33,11 +33,11 @@ int main (int argc, char *argv[])
 //			DiffusionProblem::DiffusionProblem<2> diffusion_problem_2d_coarse (n_refine);
 //			diffusion_problem_2d_coarse.run ();
 
-			DiffusionProblem::DiffusionProblem<2> diffusion_problem_2d_fine (n_refine + n_refine_local);
-			diffusion_problem_2d_fine.run ();
+//			DiffusionProblem::DiffusionProblem<2> diffusion_problem_2d_fine (n_refine + n_refine_local);
+//			diffusion_problem_2d_fine.run ();
 
-//			DiffusionProblem::DiffusionProblemMultiscale<2> diffusion_ms_problem_2d (n_refine, n_refine_local);
-//			diffusion_ms_problem_2d.run ();
+			DiffusionProblem::DiffusionProblemMultiscale<2> diffusion_ms_problem_2d (n_refine, n_refine_local);
+			diffusion_ms_problem_2d.run ();
 		}
 
 		if (compute_3d)
