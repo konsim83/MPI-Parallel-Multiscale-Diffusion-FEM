@@ -80,38 +80,6 @@ namespace DiffusionProblem
 using namespace dealii;
 
 
-template <int dim>
-class MyClass
-{
-private:
-	const unsigned int n_proc;
-	const unsigned int n_index;
-	const CellId cell_id;
-
-public:
-	// Constructors
-	MyClass()
-	: n_proc(-1), n_index(-1), cell_id()
-	{};
-	MyClass(unsigned int n_proc, unsigned int n_index, CellId cell_id)
-	: n_proc(n_proc), n_index(n_index), cell_id(cell_id)
-	{};
-
-	// Getter
-	int get_n_proc() const {
-		return n_proc;
-	}
-	int get_n_index() const {
-		return n_index;
-	}
-
-	// Printer
-	std::string print_cell_id() const {
-		return cell_id.to_string();
-	}
-};
-
-
 /*!
  * @class DiffusionProblem
  * @brief Main class to solve
@@ -151,8 +119,6 @@ private:
 	TimerOutput        		computing_timer;
 
 	unsigned int n_refine;
-
-	std::vector<MyClass<dim>> my_class_list;
 };
 
 
@@ -312,21 +278,6 @@ void DiffusionProblem<dim>::assemble_system ()
 	{
 		if (cell->is_locally_owned())
 		{
-			my_class_list.push_back(MyClass<dim>(Utilities::MPI::this_mpi_process(mpi_communicator),
-					my_class_list.size(),
-					cell->id()));
-
-			std::cout << ">>>>>   MyClass has process number   "
-					<< my_class_list.back().get_n_proc()
-					<< " - "
-					<< my_class_list.back().get_n_index()
-					<< "   out of   "
-					<< Utilities::MPI::n_mpi_processes(mpi_communicator)
-					<< "   processes.   <<<<<     >>>>>   CellId:   "
-					<< my_class_list.back().print_cell_id()
-					<< "   <<<<<"
-					<< std::endl;
-
 			cell_matrix = 0;
 			cell_rhs = 0;
 
@@ -525,7 +476,12 @@ template <int dim>
 void DiffusionProblem<dim>::run ()
 {
 	pcout << std::endl
-			<< "===========================================" << std::endl;
+			<< "==========================================="
+			<< std::endl
+			<< "Solving >> STANDARD << problem in "
+			<< dim
+			<< "D."
+			<< std::endl;
 
 	pcout << "Running with "
 	#ifdef USE_PETSC_LA
@@ -555,11 +511,12 @@ void DiffusionProblem<dim>::run ()
 		TimerOutput::Scope t(computing_timer, "output vtu");
 		output_results ();
 	}
-	pcout << std::endl
-			<< "===========================================" << std::endl;
 
 	computing_timer.print_summary();
 	computing_timer.reset();
+
+	pcout << std::endl
+			<< "===========================================" << std::endl;
 }
 
 } // end namespace DiffusionProblem

@@ -38,6 +38,7 @@ class BasisQ1 : public Function<dim>
 public:
 	BasisQ1 () = delete;
 	BasisQ1 (const typename Triangulation<dim>::active_cell_iterator &cell);
+	BasisQ1 (const BasisQ1<dim>&);
 
 	void set_index (unsigned int index);
 
@@ -58,6 +59,22 @@ private:
 	 */
 	FullMatrix<double>	coeff_matrix;
 };
+
+
+
+/*!
+ * Copy constructor.
+ *
+ * @param basis
+ */
+template<int dim>
+BasisQ1<dim>::BasisQ1 (const BasisQ1<dim>& basis)
+:
+Function<dim>(),
+index_basis (0),
+coeff_matrix (basis.coeff_matrix)
+{
+}
 
 
 /*!

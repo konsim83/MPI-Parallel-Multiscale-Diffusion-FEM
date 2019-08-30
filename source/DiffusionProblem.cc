@@ -22,19 +22,19 @@ int main (int argc, char *argv[])
 
 		Utilities::MPI::MPI_InitFinalize mpi_initialization(argc, argv, 1);
 
-		const unsigned int n_refine = 1,
-				n_refine_local = 1;
+		const unsigned int n_refine = 3,
+				n_refine_local = 3;
 
 		const bool compute_2d = true,
-				compute_3d = false;
+				compute_3d = true;
 
 		if (compute_2d)
 		{
 //			DiffusionProblem::DiffusionProblem<2> diffusion_problem_2d_coarse (n_refine);
 //			diffusion_problem_2d_coarse.run ();
 
-//			DiffusionProblem::DiffusionProblem<2> diffusion_problem_2d_fine (n_refine + n_refine_local);
-//			diffusion_problem_2d_fine.run ();
+			DiffusionProblem::DiffusionProblem<2> diffusion_problem_2d_fine (n_refine + n_refine_local);
+			diffusion_problem_2d_fine.run ();
 
 			DiffusionProblem::DiffusionProblemMultiscale<2> diffusion_ms_problem_2d (n_refine, n_refine_local);
 			diffusion_ms_problem_2d.run ();
@@ -48,8 +48,8 @@ int main (int argc, char *argv[])
 			DiffusionProblem::DiffusionProblem<3> diffusion_problem_3d_fine (n_refine + n_refine_local);
 			diffusion_problem_3d_fine.run ();
 
-//			DiffusionProblem::DiffusionProblemMultiscale<3> diffusion_ms_problem_3d (n_refine, n_refine_local);
-//			diffusion_ms_problem_3d.run ();
+			DiffusionProblem::DiffusionProblemMultiscale<3> diffusion_ms_problem_3d (n_refine, n_refine_local);
+			diffusion_ms_problem_3d.run ();
 		}
 	}
 	catch (std::exception &exc)

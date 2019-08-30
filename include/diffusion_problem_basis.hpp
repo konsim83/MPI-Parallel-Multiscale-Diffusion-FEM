@@ -71,6 +71,7 @@ public:
 	DiffusionProblemBasis () = delete;
 	DiffusionProblemBasis (unsigned int n_refine_local,
 					typename Triangulation<dim>::active_cell_iterator& global_cell);
+	DiffusionProblemBasis (const DiffusionProblemBasis<dim> &X);
 	void run ();
 
 	void output_global_solution_in_cell () const;
@@ -162,6 +163,11 @@ private:
 	 * Write basis functions as vtu.
 	 */
 	bool output_flag;
+
+	/*!
+	 * Text output on runtime.
+	 */
+	bool verbose;
 };
 
 
@@ -177,7 +183,7 @@ dof_handler (triangulation),
 constraints_vector (GeometryInfo<dim>::vertices_per_cell),
 corner_points (GeometryInfo<dim>::vertices_per_cell),
 filename_global (""),
-solution_vector (GeometryInfo<dim>::vertices_per_cell),
+solution_vector(GeometryInfo<dim>::vertices_per_cell),
 global_element_matrix (fe.dofs_per_cell,
 	fe.dofs_per_cell),
 is_built_global_element_matrix (false),
@@ -187,7 +193,8 @@ is_set_global_weights (false),
 n_refine_local (n_refine_local),
 global_cell_id (global_cell->id()),
 basis_q1 (global_cell),
-output_flag (false)
+output_flag (false),
+verbose(false)
 {
 	// set corner points
 	for (unsigned int vertex_n=0;
@@ -196,6 +203,40 @@ output_flag (false)
 	{
 		corner_points[vertex_n] = global_cell->vertex(vertex_n);
 	}
+}
+
+
+/*!
+ * Copy constructor.
+ */
+template <int dim>
+DiffusionProblemBasis<dim>::DiffusionProblemBasis (const DiffusionProblemBasis<dim> &X)
+:
+//triangulation(X.triangulation), // only possible if object is empty
+fe (X.fe),
+dof_handler (triangulation), // must be constructed deliberately
+constraints_vector (X.constraints_vector),
+corner_points (X.corner_points),
+sparsity_pattern (X.sparsity_pattern), // only possible if object is empty
+diffusion_matrix (X.diffusion_matrix), // only possible if object is empty
+system_matrix (X.system_matrix), // only possible if object is empty
+filename_global (X.filename_global),
+solution_vector (X.solution_vector),
+global_rhs (X.global_rhs),
+system_rhs (X.system_rhs),
+global_element_matrix (X.global_element_matrix),
+is_built_global_element_matrix (X.is_built_global_element_matrix),
+global_element_rhs (X.global_element_rhs),
+global_weights (X.global_weights),
+is_set_global_weights (X.is_set_global_weights),
+global_solution (X.global_solution),
+n_refine_local (X.n_refine_local),
+global_cell_id (X.global_cell_id),
+basis_q1 (X.basis_q1),
+output_flag (X.output_flag),
+verbose(X.verbose)
+{
+//	triangulation.copy_triangulation (X.triangulation);
 }
 
 
@@ -226,12 +267,13 @@ void DiffusionProblemBasis<dim>::setup_system ()
 {
 	dof_handler.distribute_dofs (fe);
 
-	std::cout << "Global cell id  "
-			<< global_cell_id.to_string()
-			<< ":   "
-			<< triangulation.n_active_cells() << " active fine cells --- "
-			<< dof_handler.n_dofs() << " subgrid dof"
-			<< std::endl;
+	if (verbose)
+		std::cout << "Global cell id  "
+				<< global_cell_id.to_string()
+				<< ":   "
+				<< triangulation.n_active_cells() << " active fine cells --- "
+				<< dof_handler.n_dofs() << " subgrid dof"
+				<< std::endl;
 
 	/*
 	 * Set up Dirichlet boundary conditions and sparsity pattern.
@@ -438,16 +480,17 @@ void DiffusionProblemBasis<dim>::solve_iterative (unsigned int index_basis)
 
 	constraints_vector[index_basis].distribute (solution_vector[index_basis]);
 
-	std::cout << "   "
-			<< "(cell   "
-			<< global_cell_id.to_string()
-			<< ") "
-			<< "(basis   "
-			<< index_basis
-			<< ")   "
-			<< solver_control.last_step()
-			<< " fine CG iterations needed to obtain convergence."
-			<< std::endl;
+	if (verbose)
+		std::cout << "   "
+				<< "(cell   "
+				<< global_cell_id.to_string()
+				<< ") "
+				<< "(basis   "
+				<< index_basis
+				<< ")   "
+				<< solver_control.last_step()
+				<< " fine CG iterations needed to obtain convergence."
+				<< std::endl;
 }
 
 

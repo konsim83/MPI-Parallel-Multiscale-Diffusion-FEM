@@ -185,6 +185,8 @@ cell_basis_map()
 template <int dim>
 void DiffusionProblemMultiscale<dim>::initialize_and_compute_basis ()
 {
+	TimerOutput::Scope t(computing_timer, "basis initialization and computation");
+
 	typename Triangulation<dim>::active_cell_iterator
 									cell = dof_handler.begin_active(),
 									endc = dof_handler.end();
@@ -192,17 +194,16 @@ void DiffusionProblemMultiscale<dim>::initialize_and_compute_basis ()
 	{
 		if (cell->is_locally_owned())
 		{
-			DiffusionProblemBasis<dim> current_cell_problem(n_refine_local,cell);
+			DiffusionProblemBasis<dim> current_cell_problem(n_refine_local, cell);
 			CellId current_cell_id(cell->id());
 
-			std::pair<CellId, DiffusionProblemBasis<dim>> new_pair(current_cell_id,
-																	current_cell_problem);
+			std::pair<typename std::map<CellId, DiffusionProblemBasis<dim>>::iterator, bool > result;
+			result = cell_basis_map.insert(std::make_pair(cell->id(),
+					current_cell_problem));
 
-//			std::pair<typename std::map<CellId, DiffusionProblemBasis<dim>>::iterator, bool > result;
-//			cell_basis_map.insert(std::make_pair(cell->id(),
-//					current_cell_problem));
-//			cell_basis_map.emplace(cell->id(),
-//					current_cell_problem);
+			Assert(result.second,
+					ExcMessage ("Insertion of local basis problem into std::map failed. "
+							"Problem with copy constructor?"));
 
 			typename std::map<CellId, DiffusionProblemBasis<dim>>::iterator it_basis = cell_basis_map.find(cell->id());
 
@@ -220,13 +221,13 @@ void DiffusionProblemMultiscale<dim>::initialize_and_compute_basis ()
 template <int dim>
 void DiffusionProblemMultiscale<dim>::make_grid ()
 {
-	TimerOutput::Scope t(computing_timer, "mesh generation");
+	TimerOutput::Scope t(computing_timer, "global mesh generation");
 
 	GridGenerator::hyper_cube (triangulation, 0, 1, /* colorize */ true);
 
 	triangulation.refine_global (n_refine);
 
-	std::cout << "Number of active cells: "
+	pcout << "Number of active global cells: "
 			<< triangulation.n_active_cells()
 			<< std::endl;
 }
@@ -242,7 +243,7 @@ void DiffusionProblemMultiscale<dim>::make_grid ()
 template <int dim>
 void DiffusionProblemMultiscale<dim>::setup_system ()
 {
-	TimerOutput::Scope t(computing_timer, "system setup");
+	TimerOutput::Scope t(computing_timer, "global system setup");
 
 	dof_handler.distribute_dofs(fe);
 
@@ -299,7 +300,7 @@ void DiffusionProblemMultiscale<dim>::setup_system ()
 template <int dim>
 void DiffusionProblemMultiscale<dim>::assemble_system ()
 {
-	TimerOutput::Scope t(computing_timer, "assembly");
+	TimerOutput::Scope t(computing_timer, "global multiscale assembly");
 
 	QGauss<dim - 1> face_quadrature_formula(fe.degree + 1);
 
@@ -401,7 +402,7 @@ template <int dim>
 void
 DiffusionProblemMultiscale<dim>::solve_iterative ()
 {
-	TimerOutput::Scope t(computing_timer, "iterative solver");
+	TimerOutput::Scope t(computing_timer, "global iterative solver");
 
 	LA::MPI::Vector    completely_distributed_solution(locally_owned_dofs,
 			mpi_communicator);
@@ -596,7 +597,12 @@ template <int dim>
 void DiffusionProblemMultiscale<dim>::run ()
 {
 	pcout << std::endl
-				<< "===========================================" << std::endl;
+			<< "==========================================="
+			<< std::endl
+			<< "Solving >> MULTISCALE << problem in "
+			<< dim
+			<< "D."
+			<< std::endl;
 
 	pcout << "Running with "
 	#ifdef USE_PETSC_LA
@@ -631,11 +637,11 @@ void DiffusionProblemMultiscale<dim>::run ()
 		output_global_fine ();
 	}
 
-	pcout << std::endl
-			<< "===========================================" << std::endl;
-
 	computing_timer.print_summary();
 	computing_timer.reset();
+
+	pcout << std::endl
+			<< "===========================================" << std::endl;
 }
 
 } // end namespace DiffusionProblem
