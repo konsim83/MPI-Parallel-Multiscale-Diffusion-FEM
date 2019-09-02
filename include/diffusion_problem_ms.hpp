@@ -20,6 +20,9 @@
 #include <deal.II/base/conditional_ostream.h>
 #include <deal.II/base/mpi.h>
 #include <deal.II/base/utilities.h>
+#include <deal.II/base/logstream.h>
+#include <deal.II/base/work_stream.h>
+#include <deal.II/base/multithread_info.h>
 #include <deal.II/base/index_set.h>
 
 #include <deal.II/lac/generic_linear_algebra.h>
@@ -95,6 +98,29 @@ public:
 	void run ();
 
 private:
+	// *********************************************
+	// This is for threading the basis computation on each node
+	struct BasisScratchData
+	{
+		BasisScratchData () {}; // No implementation
+		BasisScratchData (const BasisScratchData& /*scratch_data*/) {}; // No implementation
+	};
+
+	struct BasisCopyData
+	{
+
+	};
+
+	void make_basis_step ();
+	void compute_local_basis_thread(const typename std::map<CellId, DiffusionProblemBasis<dim>>::iterator &it_basis,
+								BasisScratchData	&scratch_data,
+								BasisCopyData	&copy_data);
+	void output_local_solution_thread(const typename std::map<CellId, DiffusionProblemBasis<dim>>::iterator &it_basis,
+								BasisScratchData	&scratch_data,
+								BasisCopyData	&copy_data);
+	void fake_copy (const BasisCopyData&) {}; // No implementation
+	// *********************************************
+
 	void make_grid ();
 	void initialize_and_compute_basis ();
 	void setup_system ();
@@ -194,7 +220,10 @@ void DiffusionProblemMultiscale<dim>::initialize_and_compute_basis ()
 	{
 		if (cell->is_locally_owned())
 		{
-			DiffusionProblemBasis<dim> current_cell_problem(n_refine_local, cell);
+			DiffusionProblemBasis<dim> current_cell_problem(n_refine_local,
+					cell,
+					triangulation.locally_owned_subdomain(),
+					mpi_communicator);
 			CellId current_cell_id(cell->id());
 
 			std::pair<typename std::map<CellId, DiffusionProblemBasis<dim>>::iterator, bool > result;
@@ -204,13 +233,42 @@ void DiffusionProblemMultiscale<dim>::initialize_and_compute_basis ()
 			Assert(result.second,
 					ExcMessage ("Insertion of local basis problem into std::map failed. "
 							"Problem with copy constructor?"));
-
-			typename std::map<CellId, DiffusionProblemBasis<dim>>::iterator it_basis = cell_basis_map.find(cell->id());
-
-			(it_basis->second).run();
 		}
 	} // end ++cell
+
+
+	/*
+	 * Now each node possesses a set of basis objects.
+	 * We need to compute them on each node and do so in
+	 * a locally threaded way.
+	 */
+	typename std::map<CellId, DiffusionProblemBasis<dim>>::iterator
+												it_basis = cell_basis_map.begin(),
+												it_endbasis = cell_basis_map.end();
+
+	WorkStream::run(it_basis,
+					it_endbasis,
+					*this,
+					&DiffusionProblemMultiscale<dim>::compute_local_basis_thread,
+					&DiffusionProblemMultiscale<dim>::fake_copy,
+					BasisScratchData(),
+					BasisCopyData());
 }
+
+
+/*!
+ * Pre-compute the local basis. This function
+ * is only used for threading.
+ */
+template <int dim>
+void
+DiffusionProblemMultiscale<dim>::compute_local_basis_thread(const typename std::map<CellId, DiffusionProblemBasis<dim>>::iterator &it_basis,
+														BasisScratchData&,
+														BasisCopyData&)
+{
+	(it_basis->second).run();
+}
+
 
 /*!
  * @brief Set up the grid with a certain number of refinements.
@@ -540,19 +598,17 @@ template <int dim>
 void
 DiffusionProblemMultiscale<dim>::output_global_fine ()
 {
-	typename Triangulation<dim>::active_cell_iterator
-										cell = dof_handler.begin_active(),
-										endc = dof_handler.end();
-	for (; cell!=endc; ++cell)
-	{
-		if (cell->is_locally_owned())
-		{
-			typename std::map<CellId, DiffusionProblemBasis<dim>>::iterator it_basis = cell_basis_map.find(cell->id());
-			// Get the global file name
-			(it_basis->second).output_global_solution_in_cell ();
-		}
-	} // end ++cell
+	typename std::map<CellId, DiffusionProblemBasis<dim>>::iterator
+												it_basis = cell_basis_map.begin(),
+												it_endbasis = cell_basis_map.end();
 
+	WorkStream::run(it_basis,
+					it_endbasis,
+					*this,
+					&DiffusionProblemMultiscale<dim>::output_local_solution_thread,
+					&DiffusionProblemMultiscale<dim>::fake_copy,
+					BasisScratchData(),
+					BasisCopyData());
 
 
 //	if (Utilities::MPI::this_mpi_process(mpi_communicator) == 0)
@@ -586,6 +642,21 @@ DiffusionProblemMultiscale<dim>::output_global_fine ()
 //		char* local_filename;
 //	}
 }
+
+
+/*!
+ * Output routine for local solution.
+ * This function is only used for threading.
+ */
+template <int dim>
+void DiffusionProblemMultiscale<dim>::output_local_solution_thread(
+		const typename std::map<CellId, DiffusionProblemBasis<dim>>::iterator &it_basis,
+		BasisScratchData&,
+		BasisCopyData&)
+{
+	(it_basis->second).output_global_solution_in_cell ();
+}
+
 
 
 /*!

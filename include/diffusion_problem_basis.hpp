@@ -9,6 +9,8 @@
 #define INCLUDE_DIFFUSION_PROBLEM_BASIS_HPP_
 
 // Deal.ii
+#include <deal.II/base/mpi.h>
+
 #include <deal.II/base/quadrature_lib.h>
 #include <deal.II/base/logstream.h>
 
@@ -70,7 +72,9 @@ class DiffusionProblemBasis
 public:
 	DiffusionProblemBasis () = delete;
 	DiffusionProblemBasis (unsigned int n_refine_local,
-					typename Triangulation<dim>::active_cell_iterator& global_cell);
+					typename Triangulation<dim>::active_cell_iterator& global_cell,
+					unsigned int local_subdomain,
+					MPI_Comm mpi_communicator);
 	DiffusionProblemBasis (const DiffusionProblemBasis<dim> &X);
 	void run ();
 
@@ -92,6 +96,8 @@ private:
 	void output_basis () const;
 
 	void set_filename_global ();
+
+	MPI_Comm mpi_communicator;
 
 	Triangulation<dim>   			triangulation;
 	FE_Q<dim>            			fe;
@@ -155,6 +161,11 @@ private:
 	const CellId global_cell_id;
 
 	/*!
+	 * Global subdomain number.
+	 */
+	const unsigned int local_subdomain;
+
+	/*!
 	 * Object carries set of local \f$Q_1\f$-basis functions.
 	 */
 	Coefficients::BasisQ1<dim> basis_q1;
@@ -176,8 +187,11 @@ private:
  */
 template <int dim>
 DiffusionProblemBasis<dim>::DiffusionProblemBasis (unsigned int n_refine_local,
-		typename Triangulation<dim>::active_cell_iterator& global_cell)
+		typename Triangulation<dim>::active_cell_iterator& global_cell,
+		unsigned int local_subdomain,
+		MPI_Comm mpi_communicator)
 :
+mpi_communicator(mpi_communicator),
 fe (1),
 dof_handler (triangulation),
 constraints_vector (GeometryInfo<dim>::vertices_per_cell),
@@ -192,6 +206,7 @@ global_weights (fe.dofs_per_cell, 0),
 is_set_global_weights (false),
 n_refine_local (n_refine_local),
 global_cell_id (global_cell->id()),
+local_subdomain(local_subdomain),
 basis_q1 (global_cell),
 output_flag (false),
 verbose(false)
@@ -213,6 +228,7 @@ template <int dim>
 DiffusionProblemBasis<dim>::DiffusionProblemBasis (const DiffusionProblemBasis<dim> &X)
 :
 //triangulation(X.triangulation), // only possible if object is empty
+mpi_communicator(X.mpi_communicator),
 fe (X.fe),
 dof_handler (triangulation), // must be constructed deliberately
 constraints_vector (X.constraints_vector),
@@ -232,6 +248,7 @@ is_set_global_weights (X.is_set_global_weights),
 global_solution (X.global_solution),
 n_refine_local (X.n_refine_local),
 global_cell_id (X.global_cell_id),
+local_subdomain(X.local_subdomain),
 basis_q1 (X.basis_q1),
 output_flag (X.output_flag),
 verbose(X.verbose)
@@ -584,7 +601,8 @@ DiffusionProblemBasis<dim>::set_filename_global ()
 			"solution-ms_fine-2d" :
 			"solution-ms_fine-3d");
 
-	filename_global += "_cell-" + global_cell_id.to_string() + ".vtu";
+	filename_global += "." + Utilities::int_to_string(local_subdomain, 5);
+	filename_global += ".cell-" + global_cell_id.to_string() + ".vtu";
 }
 
 
@@ -608,7 +626,8 @@ DiffusionProblemBasis<dim>::output_basis () const
 	data_out.build_patches ();
 
 	std::string filename = "basis";
-	filename += "_cell-" + global_cell_id.to_string();
+	filename += "." + Utilities::int_to_string(triangulation.locally_owned_subdomain(), 5);
+	filename += ".cell-" + global_cell_id.to_string();
 	filename += ".vtu";
 
 	std::ofstream output (dim == 2 ?
