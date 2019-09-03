@@ -40,7 +40,7 @@ public:
 			std::vector<Tensor<2,dim>>  &values) const override;
 
 private:
-	const int k = 21;
+	const int k = 57;
 	const double scale_factor = 0.9999999;
 
 	const double alpha = PI_D/3,

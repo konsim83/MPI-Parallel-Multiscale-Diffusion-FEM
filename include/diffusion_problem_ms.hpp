@@ -98,29 +98,6 @@ public:
 	void run ();
 
 private:
-	// *********************************************
-	// This is for threading the basis computation on each node
-	struct BasisScratchData
-	{
-		BasisScratchData () {}; // No implementation
-		BasisScratchData (const BasisScratchData& /*scratch_data*/) {}; // No implementation
-	};
-
-	struct BasisCopyData
-	{
-
-	};
-
-	void make_basis_step ();
-	void compute_local_basis_thread(const typename std::map<CellId, DiffusionProblemBasis<dim>>::iterator &it_basis,
-								BasisScratchData	&scratch_data,
-								BasisCopyData	&copy_data);
-	void output_local_solution_thread(const typename std::map<CellId, DiffusionProblemBasis<dim>>::iterator &it_basis,
-								BasisScratchData	&scratch_data,
-								BasisCopyData	&copy_data);
-	void fake_copy (const BasisCopyData&) {}; // No implementation
-	// *********************************************
-
 	void make_grid ();
 	void initialize_and_compute_basis ();
 	void setup_system ();
@@ -130,6 +107,8 @@ private:
 
 	void output_global_coarse () const;
 	void output_global_fine ();
+
+	std::vector<std::string> collect_filenames_on_mpi_process ();
 
 	MPI_Comm mpi_communicator;
 
@@ -245,28 +224,10 @@ void DiffusionProblemMultiscale<dim>::initialize_and_compute_basis ()
 	typename std::map<CellId, DiffusionProblemBasis<dim>>::iterator
 												it_basis = cell_basis_map.begin(),
 												it_endbasis = cell_basis_map.end();
-
-	WorkStream::run(it_basis,
-					it_endbasis,
-					*this,
-					&DiffusionProblemMultiscale<dim>::compute_local_basis_thread,
-					&DiffusionProblemMultiscale<dim>::fake_copy,
-					BasisScratchData(),
-					BasisCopyData());
-}
-
-
-/*!
- * Pre-compute the local basis. This function
- * is only used for threading.
- */
-template <int dim>
-void
-DiffusionProblemMultiscale<dim>::compute_local_basis_thread(const typename std::map<CellId, DiffusionProblemBasis<dim>>::iterator &it_basis,
-														BasisScratchData&,
-														BasisCopyData&)
-{
-	(it_basis->second).run();
+	for (; it_basis != it_endbasis; ++it_basis)
+	{
+		(it_basis->second).run();
+	}
 }
 
 
@@ -602,61 +563,60 @@ DiffusionProblemMultiscale<dim>::output_global_fine ()
 												it_basis = cell_basis_map.begin(),
 												it_endbasis = cell_basis_map.end();
 
-	WorkStream::run(it_basis,
-					it_endbasis,
-					*this,
-					&DiffusionProblemMultiscale<dim>::output_local_solution_thread,
-					&DiffusionProblemMultiscale<dim>::fake_copy,
-					BasisScratchData(),
-					BasisCopyData());
+	for (; it_basis != it_endbasis; ++it_basis)
+	{
+		(it_basis->second).output_global_solution_in_cell ();
+	}
 
+	std::vector<std::vector<std::string>> filename_list_list =
+			Utilities::MPI::gather (mpi_communicator,
+			collect_filenames_on_mpi_process (),
+			/* root_process = */ 0);
 
-//	if (Utilities::MPI::this_mpi_process(mpi_communicator) == 0)
-//	{
-//		DataOut<dim> data_out;
-//		data_out.attach_dof_handler (dof_handler);
-//
-//		// Names of solution components
-//		data_out.add_data_vector (solution, "solution");
-//
-//		std::vector<std::string> file_list;
-//		for (unsigned int i = 0;
-//		   i < Utilities::MPI::n_mpi_processes(mpi_communicator);
-//		   ++i)
-//		{
-//			MPI_Send()
-//			file_list.push_back(received_name);
-//		}
-//
-//		std::string filename_master = (dim == 2 ?
-//					"solution-ms_fine-2d" :
-//					"solution-ms_fine-3d");
-//		filename_master += ".pvtu";
-//
-//		std::ofstream master_output(filename_master.c_str ());
-//		data_out.write_pvtu_record(master_output, filenames_on_cell);
-//	}
-//	else // send local filename for list
-//	{
-//		unsigned int str_length =
-//		char* local_filename;
-//	}
+	std::vector<std::string> filenames_on_cell;
+	for (unsigned int i = 0; i<filename_list_list.size(); ++i)
+		for (unsigned int j = 0; j<filename_list_list[i].size(); ++j)
+			filenames_on_cell.push_back (filename_list_list[i][j]);
+
+	if (Utilities::MPI::this_mpi_process(mpi_communicator) == 0)
+	{
+//		for (unsigned int i = 0; i<filenames_on_cell.size(); ++i)
+//			std::cout << filenames_on_cell[i] << std::endl;
+
+		DataOut<dim> data_out;
+		data_out.attach_dof_handler (dof_handler);
+
+		// Names of solution components
+		data_out.add_data_vector (locally_relevant_solution, "solution");
+
+		std::string filename_master = (dim == 2 ?
+					"solution-ms_fine-2d" :
+					"solution-ms_fine-3d");
+		filename_master += ".pvtu";
+
+		std::ofstream master_output(filename_master.c_str ());
+		data_out.write_pvtu_record(master_output, filenames_on_cell);
+	}
 }
 
 
-/*!
- * Output routine for local solution.
- * This function is only used for threading.
- */
 template <int dim>
-void DiffusionProblemMultiscale<dim>::output_local_solution_thread(
-		const typename std::map<CellId, DiffusionProblemBasis<dim>>::iterator &it_basis,
-		BasisScratchData&,
-		BasisCopyData&)
+std::vector<std::string>
+DiffusionProblemMultiscale<dim>::collect_filenames_on_mpi_process ()
 {
-	(it_basis->second).output_global_solution_in_cell ();
-}
+	std::vector<std::string> filename_list;
 
+	typename std::map<CellId, DiffusionProblemBasis<dim>>::iterator
+												it_basis = cell_basis_map.begin(),
+												it_endbasis = cell_basis_map.end();
+
+	for (; it_basis != it_endbasis; ++it_basis)
+	{
+		filename_list.push_back((it_basis->second).get_filename_global ());
+	}
+
+	return filename_list;
+}
 
 
 /*!
