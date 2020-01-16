@@ -106,7 +106,8 @@ namespace DiffusionProblem
     dof_handler.distribute_dofs(fe);
 
     if (verbose)
-      std::cout << "Global cell id  " << global_cell_id.to_string() << ":   "
+      std::cout << "Global cell id  " << global_cell_id.to_string()
+		<< " (subdomain = " << local_subdomain << "):   "
                 << triangulation.n_active_cells() << " active fine cells --- "
                 << dof_handler.n_dofs() << " subgrid dof" << std::endl;
 
@@ -297,7 +298,7 @@ namespace DiffusionProblem
     SolverCG<>    solver(solver_control);
 
     PreconditionSSOR<> preconditioner;
-    preconditioner.initialize(system_matrix, 1.2);
+    preconditioner.initialize(system_matrix, 1.6);
 
     solver.solve(system_matrix,
                  solution_vector[index_basis],
