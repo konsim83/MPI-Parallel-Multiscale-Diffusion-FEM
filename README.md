@@ -7,7 +7,7 @@ This repository is for teaching purposes only.
 To build the executable and Eclipse project files you must clone the repository:
 
 ```
-git clone https://github.com/konsim83/deal.ii-9.1.1_SS19_demo_elliptic_multiscale_FEM_MPI.git elliptic_msfem_MPI
+git clone https://github.com/konsim83/MPI-Parallel-Multiscale-Diffusion-FEM.git elliptic_msfem_MPI
 ```
 We want an out-of-source-build with build files in a folder parallel to the code:
 
@@ -18,27 +18,32 @@ cd elliptic_msfem_MPI_build
 Then create the build files with `cmake`:
 
 ```
-cmake -DDEAL_II_DIR=/path/to/dealii -G"Eclipse CDT4 - Unix Makefiles" ../elliptic_msfem_MPI
+cmake -DDEAL_II_DIR=/path/to/dealii -DCMAKE_ECLIPSE_MAKE_ARGUMENTS=-j4 -G"Eclipse CDT4 - Unix Makefiles" ../elliptic_msfem_MPI
 ```
 You can now import an existing project in Eclipse. To generate the executable in debug mode type
 
 ```
 make debug
-make
+make -jN
 ```
 If you want to produce a faster reslease version type
 
 ```
 make release
-make
+make -jN
 ```
 Then test the executable with
 
 ```
-mpirun -np N ./main
+mpirun -n n ./main
 ```
-where N is the number of MPI processes. You should also be able to run this on clusters using SLURM.
+where n is the number of MPI processes. You should also be able to run this on clusters using SLURM.
 
+To run all tests type
+
+```
+ctest -V -R
+```
 
 ## Building the Documentation
 
