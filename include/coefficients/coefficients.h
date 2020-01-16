@@ -13,17 +13,17 @@
  */
 namespace Coefficients
 {
-using namespace dealii;
+  using namespace dealii;
 
-/*!
- * Constant \f$\pi\f$ in double precision format.
- */
-const double PI_D = 3.14592653509793218403;
+  /*!
+   * Constant \f$\pi\f$ in double precision format.
+   */
+  const double PI_D = 3.14592653509793218403;
 
-/*!
- * Constant \f$\pi\f$ in single precision (float) format.
- */
-const float  PI_F = 3.14159265358979f;
+  /*!
+   * Constant \f$\pi\f$ in single precision (float) format.
+   */
+  const float PI_F = 3.14159265358979f;
 
 } // end namespace Coefficients
 

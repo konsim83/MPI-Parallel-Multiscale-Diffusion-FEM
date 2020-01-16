@@ -1,0 +1,32 @@
+#!/bin/bash
+
+#####################
+# Process ALL files.
+#####################
+
+if [ ! -f contrib/utilities/indent_common.sh ]; then
+  echo "*** This script must be run from the top-level directory."
+  exit 1
+fi
+
+source contrib/utilities/indent_common.sh
+
+#
+# Run sanity checks:
+#
+checks
+
+#
+# Process all source and header files:
+#
+process "test include source" \
+  ".*\.(cc|cxx|h|hpp|tpp)" format_file
+
+#
+# Fix permissions and convert to unix line ending if necessary:
+#
+process "test include source" \
+  ".*\.(cc|cxx|h|hpp|tpp|md)" fix_permissions
+
+process "test include source" \
+  ".*\.(cc|cxx|h|hpp|tpp|cu|cuh|inst.in|cmake)" dos_to_unix
