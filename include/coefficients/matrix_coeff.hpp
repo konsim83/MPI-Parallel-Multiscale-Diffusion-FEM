@@ -43,11 +43,18 @@ namespace Coefficients
 
   private:
     const int    k            = 57;
-    const double scale_factor = 0.9999999;
+    const double scale_factor = 0.9999;
 
     const double   alpha = PI_D / 3, beta = PI_D / 6, gamma = PI_D / 4;
     Tensor<2, dim> rot;
   };
+
+  // declare specializations
+  template <>
+  MatrixCoeff<2>::MatrixCoeff();
+
+  template <>
+  MatrixCoeff<3>::MatrixCoeff();
 
   // exernal template instantiations
   extern template class MatrixCoeff<2>;

@@ -288,8 +288,8 @@ namespace DiffusionProblem
                  system_rhs,
                  preconditioner);
 
-    pcout << "   Solved in " << solver_control.last_step() << " iterations."
-          << std::endl;
+    pcout << "   Global problem solved in " << solver_control.last_step()
+          << " iterations." << std::endl;
 
     constraints.distribute(completely_distributed_solution);
     locally_relevant_solution = completely_distributed_solution;

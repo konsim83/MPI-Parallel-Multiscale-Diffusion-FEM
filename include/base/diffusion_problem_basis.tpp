@@ -38,7 +38,7 @@ namespace DiffusionProblem
     , local_subdomain(local_subdomain)
     , basis_q1(global_cell)
     , output_flag(false)
-    , verbose(false)
+    , verbose(true)
   {
     // set corner points
     for (unsigned int vertex_n = 0;
@@ -467,6 +467,9 @@ namespace DiffusionProblem
 
     if (output_flag)
       output_basis();
+
+    if (verbose)
+      std::cout << std::endl;
   }
 
 } // end namespace DiffusionProblem

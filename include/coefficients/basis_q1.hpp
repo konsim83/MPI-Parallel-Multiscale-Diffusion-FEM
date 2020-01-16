@@ -100,6 +100,36 @@ namespace Coefficients
     FullMatrix<double> coeff_matrix;
   };
 
+  // declare specializations
+  template <>
+  BasisQ1<2>::BasisQ1(
+    const typename Triangulation<2>::active_cell_iterator &cell);
+
+  template <>
+  BasisQ1<3>::BasisQ1(
+    const typename Triangulation<3>::active_cell_iterator &cell);
+
+  template <>
+  double
+  BasisQ1<2>::value(const Point<2> &, const unsigned int) const;
+
+  template <>
+  double
+  BasisQ1<3>::value(const Point<3> &, const unsigned int) const;
+
+  template <>
+  void
+  BasisQ1<2>::value_list(const std::vector<Point<2>> &,
+                         std::vector<double> &,
+                         const unsigned int) const;
+
+  template <>
+  void
+  BasisQ1<3>::value_list(const std::vector<Point<3>> &,
+                         std::vector<double> &,
+                         const unsigned int) const;
+
+
   // exernal template instantiations
   extern template class BasisQ1<2>;
   extern template class BasisQ1<3>;

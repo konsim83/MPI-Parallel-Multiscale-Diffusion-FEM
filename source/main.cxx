@@ -20,7 +20,7 @@ main(int argc, char *argv[])
     {
       Utilities::MPI::MPI_InitFinalize mpi_initialization(argc, argv, 1);
 
-      const unsigned int n_refine = 4, n_refine_local = 7;
+      const unsigned int n_refine = 3, n_refine_local = 7;
 
       const bool compute_2d = true, compute_3d = false;
 
